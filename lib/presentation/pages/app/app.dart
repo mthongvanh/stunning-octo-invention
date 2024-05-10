@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -6,27 +5,34 @@ import '../../widgets/search_header.dart';
 import '../map/map_controller.dart';
 
 class AppWidget extends StatefulWidget {
-
   final MapController _mapController;
   final FocusNode _searchFocus;
 
-  const AppWidget(this._mapController, this._searchFocus, {super.key});
+  const AppWidget(
+    this._mapController,
+    this._searchFocus, {
+    super.key,
+  });
 
   @override
   State<AppWidget> createState() => _AppWidgetState();
 }
 
 class _AppWidgetState extends State<AppWidget> {
+  TextEditingController controller = TextEditingController();
+
   @override
   void initState() {
     super.initState();
 
-    widget._searchFocus.addListener(() {
+    widget._searchFocus.addListener(() async {
       if (widget._searchFocus.hasFocus) {
         widget._searchFocus.unfocus();
-        Navigator.of(context).pushNamed(
-          'myRouteName',
+        var result = await Navigator.of(context).pushNamed(
+          'search',
+          arguments: controller.text,
         );
+        controller.text = result as String? ?? '';
       }
     });
   }
@@ -42,6 +48,7 @@ class _AppWidgetState extends State<AppWidget> {
         automaticallyImplyLeading: false,
         leadingWidth: 0,
         title: SearchHeader(
+          controller: controller,
           focusNode: widget._searchFocus,
         ),
       ),
@@ -51,7 +58,6 @@ class _AppWidgetState extends State<AppWidget> {
       ),
     );
   }
-
 
   Widget _buildMap() {
     return GoogleMap(
@@ -64,5 +70,4 @@ class _AppWidgetState extends State<AppWidget> {
       markers: const {},
     );
   }
-
 }
