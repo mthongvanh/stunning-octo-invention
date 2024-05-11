@@ -15,6 +15,12 @@ class _SearchPageState extends State<SearchPage> {
   TextEditingController? controller;
 
   @override
+  void initState() {
+    focusNode.requestFocus();
+
+    super.initState();
+  }
+  @override
   Widget build(BuildContext context) {
 
     controller ??= TextEditingController(text: widget.initialText);

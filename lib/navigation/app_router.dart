@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -8,26 +10,21 @@ class AppRouter {
     final name = settings.name;
     switch (name) {
       case 'search':
-      case _:
         return PageRouteBuilder(
-          pageBuilder: (context, animation,
-              secondaryAnimation) =>
-              SearchPage(initialText: settings.arguments as String?,),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final tween = Tween(
-                begin: 0.0,
-                end: 1.0
-            ).chain(
-              CurveTween(
-                curve: Curves.easeOut,
-              ),
-            );
+          pageBuilder: (context, animation, secondaryAnimation) => SearchPage(
+            initialText: settings.arguments as String?,
+          ),
+          transitionsBuilder: (ctx, animation, secondaryAnimation, child) {
             return FadeTransition(
-              opacity: animation.drive(tween),
+              opacity: animation,
               child: child,
             );
           },
         );
+      case _:
+        return PageRouteBuilder(
+            pageBuilder: (ctx, animation, secondaryAnimation) =>
+                const SearchPage());
     }
   }
 }

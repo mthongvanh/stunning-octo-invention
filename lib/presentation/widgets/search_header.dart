@@ -1,8 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class SearchHeader extends StatelessWidget {
   final FocusNode focusNode;
+  final bool searchEnabled;
   final bool autofocus;
   final bool showBackButton;
   final TextEditingController? controller;
@@ -13,6 +13,7 @@ class SearchHeader extends StatelessWidget {
     this.autofocus = false,
     this.controller,
     this.showBackButton = false,
+    this.searchEnabled = true,
   });
 
   @override
@@ -41,8 +42,10 @@ class SearchHeader extends StatelessWidget {
                     fillColor: Theme.of(context).colorScheme.background,
                     prefixIcon: showBackButton
                         ? _buildBackButton(context)
-                        : _buildSearchIcon(context)),
+                        : _buildSearchIcon(context),
+                ),
                 autofocus: autofocus,
+                enabled: searchEnabled,
               ),
             ),
           ),

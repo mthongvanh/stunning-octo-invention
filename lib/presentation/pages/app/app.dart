@@ -1,4 +1,6 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../widgets/search_header.dart';
@@ -22,22 +24,6 @@ class _AppWidgetState extends State<AppWidget> {
   TextEditingController controller = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-
-    widget._searchFocus.addListener(() async {
-      if (widget._searchFocus.hasFocus) {
-        widget._searchFocus.unfocus();
-        var result = await Navigator.of(context).pushNamed(
-          'search',
-          arguments: controller.text,
-        );
-        controller.text = result as String? ?? '';
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -47,9 +33,71 @@ class _AppWidgetState extends State<AppWidget> {
         elevation: 0,
         automaticallyImplyLeading: false,
         leadingWidth: 0,
-        title: SearchHeader(
-          controller: controller,
-          focusNode: widget._searchFocus,
+        title: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: const Border.fromBorderSide(
+                    BorderSide(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: TextButton(
+                  onPressed: () async {
+                    final result = await Navigator.of(context).pushNamed(
+                      'search',
+                      arguments: controller.text,
+                    );
+                    controller.text = (result as String?) ?? '';
+                  },
+                  style: const ButtonStyle(
+                    splashFactory: NoSplash.splashFactory,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search),
+                      const SizedBox(
+                        width: 8,
+                      ),
+                      Expanded(
+                        child: ValueListenableBuilder(
+                            valueListenable: controller,
+                            builder: (context, value, _) {
+                              return Text(
+                                value.text ?? '',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                ),
+                              );
+                            }),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(
+              width: 12,
+            ),
+            IconButton(
+              onPressed: () {
+                debugPrint('do something');
+              },
+              icon: const Icon(Icons.filter_list),
+              style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.resolveWith(
+                      (states) => Colors.white),
+                  shape: MaterialStateProperty.resolveWith((states) =>
+                      RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          side: const BorderSide(color: Colors.grey)))),
+            ),
+          ],
         ),
       ),
       body: Container(
