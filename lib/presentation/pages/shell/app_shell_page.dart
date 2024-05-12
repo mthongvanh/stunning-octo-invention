@@ -14,10 +14,10 @@ import '../map/map_controller.dart';
 /// [AppShellPage] will lock the height at 800px with an aspect ratio of 11.7/25.0
 /// to simulate a phone in portrait mode
 class AppShellPage extends StatefulWidget {
-
   final AppShellViewModel viewModel;
 
-  const AppShellPage(this.viewModel, {
+  const AppShellPage(
+    this.viewModel, {
     super.key,
   });
 
@@ -81,12 +81,16 @@ class _AppShellPageState extends State<AppShellPage> {
                   child: ValueListenableBuilder(
                       valueListenable: viewModel.currentDiscussion,
                       builder: (context, discussion, _) {
+                        const pConfig = PConfig(
+                          textStyle: TextStyle(color: Colors.white),
+                        );
                         return MarkdownWidget(
-                          config: MarkdownConfig.darkConfig,
+                          config: MarkdownConfig.darkConfig.copy(configs: [
+                            pConfig,
+                          ]),
                           data: discussion,
                         );
-                      }
-                  ),
+                      }),
                 ),
               ),
             ),

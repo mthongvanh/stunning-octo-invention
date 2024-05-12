@@ -14,9 +14,11 @@ class AppRouter {
           pageBuilder: (context, animation, secondaryAnimation) => SearchPage(
             initialText: settings.arguments as String?,
           ),
+          reverseTransitionDuration: const Duration(milliseconds: 0),
+          transitionDuration: const Duration(milliseconds: 50),
           transitionsBuilder: (ctx, animation, secondaryAnimation, child) {
             return FadeTransition(
-              opacity: animation,
+              opacity: animation.drive(CurveTween(curve: Curves.easeOutExpo)),
               child: child,
             );
           },
