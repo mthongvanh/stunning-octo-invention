@@ -13,6 +13,10 @@ class AppViewModel {
   final markers = ValueNotifier(<Marker>{});
   final displayedOilWells = <OilWell>{};
 
+  final applySort = ValueNotifier(false);
+  final applyRTree = ValueNotifier(false);
+  final useDefaultAnimation = ValueNotifier(false);
+
   (double latitude, double longitude) get startLocation =>
       (_losAngeles.latitude, _losAngeles.longitude);
 
@@ -61,6 +65,9 @@ class AppViewModel {
           ),
         ),
         exclude: displayedOilWells,
+        pageSize: 1000,
+        sort: applySort.value,
+        rTree: applyRTree.value,
       );
 
       displayedOilWells.addAll(closestWells);

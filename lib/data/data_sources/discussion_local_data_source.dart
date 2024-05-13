@@ -1,25 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:stunning_octo_invention/domain/entities/discussion.dart';
 
 abstract class DiscussionLocalDataSource {
-  Future<List<String>> loadDiscussions();
+  Future<List<Discussion>> loadDiscussions();
 }
 
 class MarkdownLocalDataSource extends DiscussionLocalDataSource {
-
-  final _cached = <String>[];
+  final _cached = <Discussion>[];
 
   @override
-  Future<List<String>> loadDiscussions() async {
+  Future<List<Discussion>> loadDiscussions() async {
     if (_cached.isNotEmpty) {
       return _cached;
     }
 
-    final markdownStrings = <String>[];
-    for (final assetName in _mdFilenames()) {
-      final mdString = await rootBundle.loadString(assetName);
-      markdownStrings.add(mdString);
+    final markdownStrings = <Discussion>[];
+    for (final rawData in _mdFilenames()) {
+      final mdString = await rootBundle.loadString(rawData.filename);
+      final discussion =
+          Discussion(identifier: rawData.topic, markdown: mdString);
+      markdownStrings.add(discussion);
     }
 
     _cached.clear();
@@ -28,9 +30,16 @@ class MarkdownLocalDataSource extends DiscussionLocalDataSource {
     return markdownStrings;
   }
 
-  List<String> _mdFilenames() {
+  List<({String topic, String filename})> _mdFilenames() {
     return [
-      'assets/animation_search.md',
+      (
+        topic: 'Search Animation',
+        filename: 'assets/animation_search.md',
+      ),
+      (
+        topic: 'Cached Locations',
+        filename: 'assets/cached_location_loading.md'
+      ),
     ];
   }
 }

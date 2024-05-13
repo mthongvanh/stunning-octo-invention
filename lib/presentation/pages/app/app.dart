@@ -59,7 +59,7 @@ class _AppWidgetState extends State<AppWidget> {
                 child: TextButton(
                   onPressed: () async {
                     final result = await Navigator.of(context).pushNamed(
-                      'search',
+                      viewModel.useDefaultAnimation.value ? 'search-default' : 'search',
                       arguments: controller.text,
                     );
                     controller.text = (result as String?) ?? '';

@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:r_tree/r_tree.dart';
 
 import '../../domain/entities/oil_well.dart';
@@ -17,12 +16,20 @@ abstract class OilWellLocalDataSource {
     final Rect? visibleRect,
     final Set<OilWell> exclude,
     final int pageSize,
+    final bool sort,
+    final bool rTree,
   });
 }
 
 class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
   final List<OilWell> _cachedWells = [];
   final RTree<OilWell> _oilWellTree = RTree();
+
+  int rTreeCount = 0;
+  int rTreeTotal = 0;
+
+  int naiveCount = 0;
+  int naiveTotal = 0;
 
   @override
   Future<List<OilWell>> loadWells() async {
@@ -110,18 +117,33 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
   Future<List<OilWell>> closestWells(
     final Point center, {
     final Rect? visibleRect,
-    final Set<OilWell> exclude = const {},
+    Set<OilWell> exclude = const {},
     final int pageSize = 10,
+    final bool sort = false,
+    final bool rTree = false,
   }) async {
-    // return closestWells_5seconds(center, exclude: exclude, pageSize: pageSize);
-    return closestWellsRTree_under100ms(
-      center,
-      exclude: exclude,
-      pageSize: pageSize,
-      latLongBoundingBox: visibleRect ??
-          Rect.fromPoints(Offset(center.x.toDouble(), center.y.toDouble()),
-              const Offset(0.0, 0.0)),
-    );
+    exclude = {};
+    if (rTree) {
+      return closestWellsRTree_under100ms(
+        center,
+        exclude: exclude,
+        pageSize: pageSize,
+        latLongBoundingBox: visibleRect ??
+            Rect.fromPoints(Offset(center.x.toDouble(), center.y.toDouble()),
+                const Offset(0.0, 0.0)),
+        sort: sort,
+      );
+    } else {
+      return closestWells_5seconds(
+        center,
+        latLongBoundingBox: visibleRect ??
+            Rect.fromPoints(Offset(center.x.toDouble(), center.y.toDouble()),
+                const Offset(0.0, 0.0)),
+        exclude: exclude,
+        pageSize: pageSize,
+        sort: sort,
+      );
+    }
   }
 
   /// 500ms to load full json
@@ -134,6 +156,15 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
   /// identifier: sort discovered locations (items: 6058) from RTree.search -- 73 milliseconds
   /// identifier: search RTree -- 81 milliseconds
   ///
+  /// iPhone Xs
+  /// sort discovered locations (items: 18690) from RTree.search -- 46 milliseconds
+  /// search RTree -- 51 milliseconds
+  /// sort discovered locations (items: 17535) from RTree.search -- 52 milliseconds
+  /// search RTree -- 57 milliseconds
+  /// sort discovered locations (items: 18342) from RTree.search -- 48 milliseconds
+  /// search RTree -- 53 milliseconds
+  /// sort discovered locations (items: 19224) from RTree.search -- 47 milliseconds
+  /// search RTree -- 51 milliseconds
   ///
   /// Oil_Wells_CA-only.geojson
   /// 127ms to create initial tree
@@ -150,11 +181,12 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
     required final Rect latLongBoundingBox,
     final Set<OilWell> exclude = const {},
     final int pageSize = 10,
+    final bool sort = true,
   }) async {
     List<OilWell> closestWells = [];
     List<OilWell> wells =
         _cachedWells.isNotEmpty ? _cachedWells.toList() : await loadWells();
-    await Logger.duration(
+    final rTreeTime = await Logger.duration(
       identifier: 'search RTree',
       operation: () async {
         final rectangle = Rectangle(
@@ -164,83 +196,156 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
           latLongBoundingBox.height.toDouble(),
         );
 
-        final discoveredItems = _oilWellTree.search(rectangle);
+        List<OilWell> discoveredItems = [];
         await Logger.duration(
-            identifier:
-                'sort discovered locations (items: ${discoveredItems.length}) from RTree.search',
+            identifier: 'search tree and map items',
             operation: () {
-              discoveredItems.sort((final a, final b) {
-                final distanceA = Geolocator.distanceBetween(
-                    center.x.toDouble(),
-                    center.y.toDouble(),
-                    a.value.latitude.toDouble(),
-                    a.value.longitude.toDouble());
-                final distanceB = Geolocator.distanceBetween(
-                    center.x.toDouble(),
-                    center.y.toDouble(),
-                    b.value.latitude.toDouble(),
-                    b.value.longitude.toDouble());
-                return distanceA.compareTo(distanceB);
-              });
+              discoveredItems = _oilWellTree
+                  .search(rectangle)
+                  .take(60000)
+                  .map((e) => e.value)
+                  .toList();
             });
 
-        int index = 0;
-        while (discoveredItems.isNotEmpty &&
-            closestWells.length < pageSize &&
-            index < (discoveredItems.length - 1)) {
-          final oilWell = discoveredItems[index].value;
-          if (!exclude.contains(oilWell)) {
-            closestWells.add(oilWell);
-          }
-          index++;
+        await Logger.duration(
+            identifier:
+                'exclude items (${exclude.length}) from discovered (${discoveredItems.length})',
+            operation: () {
+              discoveredItems
+                  .retainWhere((element) => !exclude.contains(element));
+            });
+
+        if (sort) {
+          await Logger.duration(
+              identifier: 'sort wells: count ${discoveredItems.length}',
+              operation: () async {
+                discoveredItems.sort((final a, final b) {
+                  final distanceALat =
+                      (center.x.abs() - a.latitude.abs()).abs();
+                  final distanceALng =
+                      (center.y.abs() - a.longitude.abs()).abs();
+
+                  final distanceBLat =
+                      (center.x.abs() - b.latitude.abs()).abs();
+                  final distanceBLng =
+                      (center.y.abs() - b.longitude.abs()).abs();
+
+                  return (distanceALat + distanceALng)
+                      .compareTo(distanceBLat + distanceBLng);
+                });
+              });
         }
+
+        closestWells = discoveredItems.take(pageSize).toList();
       },
     );
+
+    rTreeTotal += rTreeTime;
+    rTreeCount++;
+    printStatus();
     return closestWells;
   }
 
-  /// this implementation takes 5 seconds to loop through 330k oil wells
+  /// find wells in visible area -- 22 milliseconds
+  /// sort wells: count 6135 -- 69 milliseconds
+  /// load closest wells -- 93 milliseconds
+  /// find wells in visible area -- 17 milliseconds
+  /// sort wells: count 5908 -- 65 milliseconds
+  /// load closest wells -- 83 milliseconds
+  /// find wells in visible area -- 24 milliseconds
+  /// sort wells: count 5882 -- 66 milliseconds
+  /// load closest wells -- 90 milliseconds
+  /// find wells in visible area -- 25 milliseconds
+  /// sort wells: count 5882 -- 69 milliseconds
+  /// load closest wells -- 94 milliseconds
+  ///
+  /// sort wells: count 42393 -- 585 milliseconds
+  /// load closest wells -- 618 milliseconds
+  /// find wells in visible area -- 29 milliseconds
+  /// sort wells: count 28720 -- 390 milliseconds
+  /// load closest wells -- 420 milliseconds
+  /// find wells in visible area -- 27 milliseconds
+  /// sort wells: count 21069 -- 288 milliseconds
+  /// load closest wells -- 316 milliseconds
+  /// find wells in visible area -- 27 milliseconds
+  /// sort wells: count 16778 -- 212 milliseconds
+  /// load closest wells -- 240 milliseconds
   Future<List<OilWell>> closestWells_5seconds(
     final Point center, {
+    required final Rect latLongBoundingBox,
     final Set<OilWell> exclude = const {},
     final int pageSize = 10,
+    final bool sort = true,
   }) async {
     List<OilWell> closestWells = [];
     List<OilWell> wells =
         _cachedWells.isNotEmpty ? _cachedWells.toList() : await loadWells();
-    await Logger.duration(
+    final naiveTime = await Logger.duration(
       identifier: 'load closest wells',
       operation: () async {
-        wells.sort((final a, final b) {
-          final distanceA = Geolocator.distanceBetween(
-              center.x.toDouble(),
-              center.y.toDouble(),
-              a.latitude.toDouble(),
-              a.longitude.toDouble());
-          final distanceB = Geolocator.distanceBetween(
-              center.x.toDouble(),
-              center.y.toDouble(),
-              b.latitude.toDouble(),
-              b.longitude.toDouble());
-          return distanceA.compareTo(distanceB);
-        });
+        await Logger.duration(
+            identifier:
+                'remove excluded items (${exclude.length}) from all wells (${wells.length})',
+            operation: () {
+              wells.retainWhere((element) => !exclude.contains(element));
+            });
 
-        int index = 0;
-        while (closestWells.length < pageSize) {
-          final oilWell = wells[index];
-          if (!exclude.contains(oilWell)) {
-            closestWells.add(oilWell);
-          }
-          index++;
+        final withinBox = <OilWell>[];
+        await Logger.duration(
+            identifier: 'find wells in visible area',
+            operation: () {
+              wells.retainWhere(
+                (element) => latLongBoundingBox.contains(
+                  Offset(
+                    element.longitude,
+                    element.latitude,
+                  ),
+                ),
+              );
+              withinBox.addAll(wells.take(60000));
+              debugPrint('found ${withinBox.length} wells in visible area');
+            });
+
+        if (sort) {
+          await Logger.duration(
+              identifier: 'sort wells: count ${withinBox.length}',
+              operation: () async {
+                withinBox.sort((final a, final b) {
+                  final distanceALat =
+                      (center.x.abs() - a.latitude.abs()).abs();
+                  final distanceALng =
+                      (center.y.abs() - a.longitude.abs()).abs();
+
+                  final distanceBLat =
+                      (center.x.abs() - b.latitude.abs()).abs();
+                  final distanceBLng =
+                      (center.y.abs() - b.longitude.abs()).abs();
+
+                  return (distanceALat + distanceALng)
+                      .compareTo(distanceBLat + distanceBLng);
+                });
+              });
         }
+
+        closestWells = withinBox.take(pageSize).toList();
       },
     );
+    naiveTotal += naiveTime;
+    naiveCount++;
+    printStatus();
     return closestWells;
+  }
+
+  void printStatus() {
+    debugPrint(
+        'naive avg ${naiveTotal / naiveCount.toDouble()} ms ($naiveTotal total ms / $naiveCount times)');
+    debugPrint(
+        'r tree avg ${rTreeTotal / rTreeCount.toDouble()} ms ($rTreeTotal total ms / $rTreeCount times)');
   }
 }
 
 abstract class Logger {
-  static Future<void> duration({
+  static Future<int> duration({
     required final String identifier,
     required FutureOr<void> Function() operation,
   }) async {
@@ -249,5 +354,6 @@ abstract class Logger {
     final end = DateTime.now();
     debugPrint(
         'identifier: $identifier -- ${end.difference(start).inMilliseconds} milliseconds');
+    return end.difference(start).inMilliseconds;
   }
 }
