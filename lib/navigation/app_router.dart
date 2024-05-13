@@ -23,10 +23,14 @@ class AppRouter {
             );
           },
         );
+      case "search-default":
+        return MaterialPageRoute(
+            builder: (ctx) =>
+                SearchPage(initialText: settings.arguments as String?,));
       case _:
         return PageRouteBuilder(
             pageBuilder: (ctx, animation, secondaryAnimation) =>
-                const SearchPage());
+                SearchPage(initialText: settings.arguments as String?,));
     }
   }
 }

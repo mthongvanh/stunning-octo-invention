@@ -11,12 +11,14 @@ dependencies:
     sdk: flutter
 
   cupertino_icons:
+  geolocator:
   google_maps_flutter:
 
   json_annotation:
   json_serializable:
 
   markdown_widget:
+  r_tree:
 
 dev_dependencies:
   flutter_test:

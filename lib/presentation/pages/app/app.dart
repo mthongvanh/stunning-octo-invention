@@ -1,18 +1,20 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:async';
 
-import '../../widgets/search_header.dart';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:stunning_octo_invention/presentation/pages/app/app_view_model.dart';
+
 import '../map/map_controller.dart';
 
 class AppWidget extends StatefulWidget {
   final MapController _mapController;
+  final AppViewModel appViewModel;
   final FocusNode _searchFocus;
 
   const AppWidget(
     this._mapController,
     this._searchFocus, {
+    required this.appViewModel,
     super.key,
   });
 
@@ -22,6 +24,13 @@ class AppWidget extends StatefulWidget {
 
 class _AppWidgetState extends State<AppWidget> {
   TextEditingController controller = TextEditingController();
+  AppViewModel get viewModel => widget.appViewModel;
+
+  @override
+  void initState() {
+    unawaited(widget.appViewModel.loadWells());
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,14 +117,20 @@ class _AppWidgetState extends State<AppWidget> {
   }
 
   Widget _buildMap() {
-    return GoogleMap(
-      onMapCreated: widget._mapController.onMapCreated,
-      onCameraIdle: widget._mapController.onMapMoved,
-      initialCameraPosition: const CameraPosition(
-        target: LatLng(0, 0),
-        zoom: 2,
-      ),
-      markers: const {},
+    final start = viewModel.startLocation;
+    return ValueListenableBuilder(
+      valueListenable: viewModel.markers,
+      builder: (final context, final markers, final _) {
+        return GoogleMap(
+          onMapCreated: viewModel.onMapCreated,
+          onCameraIdle: viewModel.onMapMoved,
+          initialCameraPosition: CameraPosition(
+            target: LatLng(start.$1, start.$2),
+            zoom: 9,
+          ),
+          markers: markers,
+        );
+      }
     );
   }
 }

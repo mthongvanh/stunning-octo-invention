@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:markdown_widget/config/all.dart';
 import 'package:markdown_widget/widget/all.dart';
 import 'package:stunning_octo_invention/navigation/app_router.dart';
+import 'package:stunning_octo_invention/presentation/pages/app/app_view_model.dart';
 import 'package:stunning_octo_invention/presentation/pages/shell/app_shell_view_model.dart';
 import 'package:stunning_octo_invention/presentation/theme/app_theme.dart';
 
@@ -29,6 +30,7 @@ class _AppShellPageState extends State<AppShellPage> {
   AppShellViewModel get viewModel => widget.viewModel;
 
   final controller = MapController();
+  final appViewModel = AppViewModel();
   final focusNode = FocusNode();
 
   final _aspectRatio = 11.7 / 25.0;
@@ -131,6 +133,7 @@ class _AppShellPageState extends State<AppShellPage> {
       home: AppWidget(
         controller,
         focusNode,
+        appViewModel: appViewModel,
       ),
     );
   }

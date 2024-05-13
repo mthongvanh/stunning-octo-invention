@@ -16,7 +16,7 @@ class OilWell {
     required this.longitude,
   });
 
-  static fromJson(final Map<String, dynamic> json) => _$OilWellFromJson(json);
+  static OilWell fromJson(final Map<String, dynamic> json) => _$OilWellFromJson(json);
 
   Map<String, dynamic> toJson() => _$OilWellToJson(this);
 }
