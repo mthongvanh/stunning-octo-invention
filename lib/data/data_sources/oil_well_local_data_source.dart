@@ -219,6 +219,22 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
           await Logger.duration(
               identifier: 'sort wells: count ${discoveredItems.length}',
               operation: () async {
+                // classic distance-between-two-points
+                // discoveredItems.sort((final a, final b) {
+                //   final distanceA = Geolocator.distanceBetween(
+                //       center.x.toDouble(),
+                //       center.y.toDouble(),
+                //       a.latitude.toDouble(),
+                //       a.longitude.toDouble());
+                //   final distanceB = Geolocator.distanceBetween(
+                //       center.x.toDouble(),
+                //       center.y.toDouble(),
+                //       b.latitude.toDouble(),
+                //       b.longitude.toDouble());
+                //   return distanceA.compareTo(distanceB);
+                // });
+
+                // simplified
                 discoveredItems.sort((final a, final b) {
                   final distanceALat =
                       (center.x.abs() - a.latitude.abs()).abs();
@@ -303,13 +319,29 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
                 ),
               );
               withinBox.addAll(wells.take(60000));
-              debugPrint('found ${withinBox.length} wells in visible area');
+              print('found ${withinBox.length} wells in visible area');
             });
 
         if (sort) {
           await Logger.duration(
               identifier: 'sort wells: count ${withinBox.length}',
               operation: () async {
+                // classic distance-between-two-points
+                // withinBox.sort((final a, final b) {
+                //   final distanceA = Geolocator.distanceBetween(
+                //       center.x.toDouble(),
+                //       center.y.toDouble(),
+                //       a.latitude.toDouble(),
+                //       a.longitude.toDouble());
+                //   final distanceB = Geolocator.distanceBetween(
+                //       center.x.toDouble(),
+                //       center.y.toDouble(),
+                //       b.latitude.toDouble(),
+                //       b.longitude.toDouble());
+                //   return distanceA.compareTo(distanceB);
+                // });
+
+                // simplified
                 withinBox.sort((final a, final b) {
                   final distanceALat =
                       (center.x.abs() - a.latitude.abs()).abs();
@@ -337,9 +369,9 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
   }
 
   void printStatus() {
-    debugPrint(
+    print(
         'naive avg ${naiveTotal / naiveCount.toDouble()} ms ($naiveTotal total ms / $naiveCount times)');
-    debugPrint(
+    print(
         'r tree avg ${rTreeTotal / rTreeCount.toDouble()} ms ($rTreeTotal total ms / $rTreeCount times)');
   }
 }
@@ -352,7 +384,7 @@ abstract class Logger {
     final start = DateTime.now();
     await operation();
     final end = DateTime.now();
-    debugPrint(
+    print(
         'identifier: $identifier -- ${end.difference(start).inMilliseconds} milliseconds');
     return end.difference(start).inMilliseconds;
   }
