@@ -186,6 +186,7 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
     List<OilWell> closestWells = [];
     List<OilWell> wells =
         _cachedWells.isNotEmpty ? _cachedWells.toList() : await loadWells();
+    List<OilWell> discoveredItems = [];
     final rTreeTime = await Logger.duration(
       identifier: 'search RTree',
       operation: () async {
@@ -196,7 +197,6 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
           latLongBoundingBox.height.toDouble(),
         );
 
-        List<OilWell> discoveredItems = [];
         await Logger.duration(
             identifier: 'search tree and map items',
             operation: () {
@@ -258,7 +258,9 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
 
     rTreeTotal += rTreeTime;
     rTreeCount++;
-    printStatus();
+
+    print('rTree,${discoveredItems.length},$rTreeTime');
+    // printStatus();
     return closestWells;
   }
 
@@ -296,6 +298,9 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
     List<OilWell> closestWells = [];
     List<OilWell> wells =
         _cachedWells.isNotEmpty ? _cachedWells.toList() : await loadWells();
+
+    final withinBox = <OilWell>[];
+
     final naiveTime = await Logger.duration(
       identifier: 'load closest wells',
       operation: () async {
@@ -306,7 +311,6 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
               wells.retainWhere((element) => !exclude.contains(element));
             });
 
-        final withinBox = <OilWell>[];
         await Logger.duration(
             identifier: 'find wells in visible area',
             operation: () {
@@ -319,7 +323,7 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
                 ),
               );
               withinBox.addAll(wells.take(60000));
-              print('found ${withinBox.length} wells in visible area');
+              // print('found ${withinBox.length} wells in visible area');
             });
 
         if (sort) {
@@ -364,7 +368,8 @@ class OilWellLocalDataSourceImpl extends OilWellLocalDataSource {
     );
     naiveTotal += naiveTime;
     naiveCount++;
-    printStatus();
+    print('nonR,${withinBox.length},$naiveTime');
+    // printStatus();
     return closestWells;
   }
 
@@ -384,8 +389,8 @@ abstract class Logger {
     final start = DateTime.now();
     await operation();
     final end = DateTime.now();
-    print(
-        'identifier: $identifier -- ${end.difference(start).inMilliseconds} milliseconds');
+    // print(
+    //     'identifier: $identifier -- ${end.difference(start).inMilliseconds} milliseconds');
     return end.difference(start).inMilliseconds;
   }
 }

@@ -1,27 +1,38 @@
 ## Cached Locations - Preload Map Locations 
-#### Problem: App takes several seconds to load charging stations 
+#### Problem: App takes several seconds to load map locations
 
 ### Discussion
 ***Solution***
 
-After fetching charging stations, persist them to local storage in an R-Tree. After the map's visible area changes, the widget loads cached locations while making the API call to the recommendation engine.
+After fetching charging stations, persist them to local storage in an R-Tree. As the map's visible area changes, the widget loads cached locations while making the API call to the recommendation engine.
 
 ***Challenges***
 
-- Inaccurate charging station data
 - Location sample size
+- Capturing comparable metrics
 
-***Implementation***
+***Implementation*** 
 
-This example uses the MaterialApp's navigator widget to push a new page onto the navigation stack. The push operation uses a custom transition which animates only the page's opacity (not the position of UI elements) instead of the default Material Page Route. Along with the static elements and animation curves applied, the animation happens subtly. Most importantly the user is able to start searching almost instantly, as the text field has the auto-focus flag enabled.
+This example uses the Google Maps SDK and includes an 80mb geojson file that represents 340,000 unique locations in California and Texas. The sheer amount of JSON data presents some issues worth considering on the mobile end. While the data set size is much larger than the number of charges the application would load from its cache, it gives an idea of how it performs at scale. The R-tree data structure performs very well with less than ten thousands locations, so it would be a great solution for storing and retrieving location data in the app.
 
-The Navigator approach presents several unique challenges outlined above. The navigator provides a means to decouple the search page from the map page, instead of coupling the widgets by placing them in a shared parent widget. Placing them in a shared parent widget, allows the parent to easily toggle the visibility of the search page and pass any state between the map and search widgets. The parent widget can simply create a listenable property and pass that property by reference to both the map and search widgets, since it's responsible for creating both of those widgets. Then the search widget can update the shared state and the changes will be reflected on the map widget.
+I used two approaches to the problem: 
+1) iterate a simple unordered lists of locations with gps coordinates to see if they fall inside the map's visible area
+2) use an R Tree to check whether a location falls inside the visible area
 
-On the other hand, the navigator approach requires a bit of engineering to achieve the same behavior. Since the map widget's parent can no longer directly pass the required state to the search widget, it must do so by passing values via the navigator. Applications generally contain a Navigator object near the top of the widget tree which is then passed down the tree as widgets are added. The application registers pages or callbacks with the navigator to handle setup of new widgets. The navigator has several asynchronous "push" functions which accept any type of object to be passed from the caller to the target widget. While the dynamic typing provides great flexibility, it also puts onus on the developer to ensure the correct type has been passed to the target widget.
+Testing yielded some interesting results. The R-Tree performed extremely well when searching less than ten thousand locations but performance suffered as the sample size increased beyond twenty thousand. 
 
-In example app, the map page calls the navigator's pushNamed() method, passing in the page name and any text displayed in the search field, which is used to populate the search page's text field. When the user finishes the search, it's reasonable that the map page's search field updates as well. In the navigator, push is paired with pop, which dismisses pages. Upon search completion, pop is called with the updated search text. If the push has been awaited, it will then complete the async push operation and return the value that was passed into the pop function. The example app uses the returned value to update the map's search field, in turn synchronizing the data.
+- Under 10,000 locations
+  - R-Tree: 5.5 ms
+  - Non-R-Tree: 35.8 ms
+- 10k - 30k locations
+  - R-Tree: 23.4 ms
+  - Non-R-Tree: 39.4 ms
+- Above 30k locations
+  - R-Tree: 57.0 ms
+  - Non-R-Tree: 45.5 ms
 
-With the navigator approach, customizing animations is also less straight-forward. Since the views are decoupled, the map's parent widget must rely on the navigator to control the animation. Navigator provides a couple entry points to explicitly animate our widgets. The entry point depends on how dynamic the navigation should be. For more declarative routing, we can pass in a list of pages that our application can display. The list of pages inherit from the `Page` class, so we can override the implementation to customize its animation there. Or, for more imperative routing, we can supply implementations for callback functions like navigator's onGenerateRoute parameter where we control the animation.
+![](chart.png)
 
-In our example app, the simpler imperative style of routing has been implemented in a separate class. The class defines a function that contains the page presentation logic. The function list of all the routes that our app might load and defines how they should be presented when navigating to them. In this logic, we swap the MaterialPageRoute for a custom page route that applies a fade transition and changes the transition's default duration from 300ms to 50ms and 0ms for the push and pop animations.
+I don't have any metrics on the R-Tree internal implementation, but it's likely related to how R-Tree's are structured. Each node is a tuple containing a rectangle and items that lie within the rectangle. The items can be either a child node or leaf nodes which the rectangle contains. When searching for items, we traverse the tree by checking the rectangles to see if they contain our item. Since we do not have to check every item in the collection, searches happen very quickly. Creating the rectangle keys will also create additional items in the collection which may explain the performance degradation above 30k items when the search area is too large.
 
+Given the sample sizes and zoom levels that the application will be used with, the R-Tree provides exceptional performance for the likely real-world use case.
