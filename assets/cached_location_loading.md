@@ -10,6 +10,7 @@ After fetching charging stations, persist them to local storage in an R-Tree. As
 
 - Location sample size
 - Capturing comparable metrics
+  - Open Developer Tools to view metrics printed in the console
 
 ***Implementation*** 
 
